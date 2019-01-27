@@ -1,7 +1,7 @@
 package com.ding.myrpc.client;
 
 import com.ding.myrpc.service.MyInterface;
-import com.ding.myrpc.util.RpcBuilder;
+import com.ding.myrpc.util.RpcClientUtil;
 
 public class RpcClient {
 
@@ -9,7 +9,7 @@ public class RpcClient {
     static final int port = 8888;
 
     public static void main(String[] args) {
-        Object rpcClient = RpcBuilder.buildRpcClient(MyInterface.class, host, port);
+        Object rpcClient = RpcClientUtil.buildRpcClient(MyInterface.class, host, port);
 
         MyInterface myInterface = (MyInterface) rpcClient;
 

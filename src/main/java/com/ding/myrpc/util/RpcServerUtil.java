@@ -2,85 +2,40 @@ package com.ding.myrpc.util;
 
 import com.ding.myrpc.bean.RequestInfoClass;
 import com.ding.myrpc.bean.ResponseInfoClass;
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ *
+ * Rpc服务端工具
+ *
+ */
+public class RpcServerUtil {
 
-public class RpcBuilder {
+    private final static Logger LOG = LoggerFactory.getLogger(RpcServerUtil.class);
 
     private static final int nThreads = Runtime.getRuntime().availableProcessors() * 2;
     private static ExecutorService handlerPool = Executors.newFixedThreadPool(nThreads);
 
-    public static <T> T buildRpcClient(final Class<T> cls, final String host, final int port) {
-
-        Enhancer enhancer = new Enhancer();
-        enhancer.setSuperclass(cls);
-        enhancer.setCallback(new MethodInterceptor() {
-            @Override
-            public Object intercept(Object o, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-                Object returnData = null;
-
-                Socket socket = null;
-                ObjectInputStream in = null;
-                ObjectOutputStream out = null;
-
-                try {
-                    socket = new Socket(host, port);
-                    in = new ObjectInputStream(socket.getInputStream());
-                    out = new ObjectOutputStream(socket.getOutputStream());
-
-
-                    RequestInfoClass request = RequestInfoClass.builder()
-                            .requestId(UUID.randomUUID().toString())
-                            .className(method.getDeclaringClass().getName())
-                            .methodName(method.getName())
-                            .parameterTypes(method.getParameterTypes())
-                            .parameters(args)
-                            .build();
-
-                    out.writeObject(request);
-                    out.flush();
-
-                    Object responseObject = in.readObject();
-                    if (responseObject instanceof ResponseInfoClass) {
-                        ResponseInfoClass responseInfoClass = (ResponseInfoClass) responseObject;
-                        if (responseInfoClass.isError()) {
-                            throw responseInfoClass.getCause();
-                        } else {
-                            returnData = responseInfoClass.getData();
-                        }
-                    }
-
-                } finally {
-                    out.close();
-                    in.close();
-                    socket.close();
-                }
-
-                return returnData;
-            }
-        });
-        T t = (T) enhancer.create();
-        return t;
-    }
-
     public static void buildRpcServer(final Object service, final int port) throws IOException {
 
         ServerSocket serverSocket = new ServerSocket(port);
+        LOG.info("Server listen {}", port);
 
         while (true) {
             Socket socket = serverSocket.accept();
-            handlerPool.submit(new Handler(service, socket));
+            LOG.info("Create a channel");
 
+            handlerPool.submit(new Handler(service, socket));
         }
     }
 
@@ -135,4 +90,3 @@ public class RpcBuilder {
         }
     }
 }
-
